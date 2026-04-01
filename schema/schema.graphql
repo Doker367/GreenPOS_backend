@@ -1,0 +1,328 @@
+scalar UUID
+scalar Time
+scalar Date
+scalar JSON
+
+type Tenant {
+  id: UUID!
+  name: String!
+  slug: String!
+  settings: JSON
+  isActive: Boolean!
+  branches: [Branch!]!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+type Branch {
+  id: UUID!
+  tenant: Tenant!
+  name: String!
+  address: String
+  phone: String
+  isActive: Boolean!
+  users: [User!]!
+  categories: [Category!]!
+  products: [Product!]!
+  tables: [Table!]!
+  orders: [Order!]!
+  reservations: [Reservation!]!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+type User {
+  id: UUID!
+  branch: Branch!
+  email: String!
+  name: String!
+  role: UserRole!
+  isActive: Boolean!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MANAGER
+  WAITER
+  KITCHEN
+}
+
+type Category {
+  id: UUID!
+  branch: Branch!
+  name: String!
+  description: String
+  sortOrder: Int!
+  isActive: Boolean!
+  products: [Product!]!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+type Product {
+  id: UUID!
+  branch: Branch!
+  category: Category
+  name: String!
+  description: String
+  price: Float!
+  imageUrl: String
+  isAvailable: Boolean!
+  isFeatured: Boolean!
+  preparationTime: Int!
+  allergens: [String!]!
+  rating: Float!
+  reviewCount: Int!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+type Table {
+  id: UUID!
+  branch: Branch!
+  number: String!
+  capacity: Int!
+  status: TableStatus!
+  currentOrder: Order
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+}
+
+type Order {
+  id: UUID!
+  branch: Branch!
+  table: Table
+  user: User!
+  customerName: String
+  customerPhone: String
+  status: OrderStatus!
+  subtotal: Float!
+  tax: Float!
+  discount: Float!
+  total: Float!
+  notes: String
+  items: [OrderItem!]!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+  PAID
+}
+
+type OrderItem {
+  id: UUID!
+  order: Order!
+  product: Product!
+  quantity: Int!
+  unitPrice: Float!
+  totalPrice: Float!
+  notes: String
+  createdAt: Time!
+}
+
+type Reservation {
+  id: UUID!
+  branch: Branch!
+  table: Table
+  customerName: String!
+  customerPhone: String
+  customerEmail: String
+  guestCount: Int!
+  reservationDate: Date!
+  reservationTime: Time!
+  status: ReservationStatus!
+  notes: String
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+# Inputs
+input CreateTenantInput {
+  name: String!
+  slug: String!
+  settings: JSON
+}
+
+input CreateBranchInput {
+  tenantId: UUID!
+  name: String!
+  address: String
+  phone: String
+}
+
+input CreateUserInput {
+  branchId: UUID!
+  email: String!
+  password: String!
+  name: String!
+  role: UserRole!
+}
+
+input CreateCategoryInput {
+  branchId: UUID!
+  name: String!
+  description: String
+  sortOrder: Int
+}
+
+input CreateProductInput {
+  branchId: UUID!
+  categoryId: UUID
+  name: String!
+  description: String
+  price: Float!
+  imageUrl: String
+  isAvailable: Boolean
+  isFeatured: Boolean
+  preparationTime: Int
+  allergens: [String!]
+}
+
+input CreateTableInput {
+  branchId: UUID!
+  number: String!
+  capacity: Int
+}
+
+input CreateOrderInput {
+  branchId: UUID!
+  tableId: UUID
+  userId: UUID!
+  customerName: String
+  customerPhone: String
+  notes: String
+  items: [CreateOrderItemInput!]!
+}
+
+input CreateOrderItemInput {
+  productId: UUID!
+  quantity: Int!
+  notes: String
+}
+
+input CreateReservationInput {
+  branchId: UUID!
+  tableId: UUID
+  customerName: String!
+  customerPhone: String
+  customerEmail: String
+  guestCount: Int!
+  reservationDate: Date!
+  reservationTime: Time!
+  notes: String
+}
+
+# Auth
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+# Queries
+type Query {
+  # Tenant queries
+  me: User!
+  tenant: Tenant!
+  
+  # Branch queries
+  branches: [Branch!]!
+  branch(id: UUID!): Branch
+  
+  # User queries
+  users(branchId: UUID!): [User!]!
+  user(id: UUID!): User
+  
+  # Category queries
+  categories(branchId: UUID!): [Category!]!
+  category(id: UUID!): Category
+  
+  # Product queries
+  products(branchId: UUID!, categoryId: UUID): [Product!]!
+  product(id: UUID!): Product
+  featuredProducts(branchId: UUID!): [Product!]!
+  
+  # Table queries
+  tables(branchId: UUID!): [Table!]!
+  table(id: UUID!): Table
+  
+  # Order queries
+  orders(branchId: UUID!, status: OrderStatus, limit: Int): [Order!]!
+  order(id: UUID!): Order
+  activeOrders(branchId: UUID!): [Order!]!
+  
+  # Reservation queries
+  reservations(branchId: UUID!, date: Date): [Reservation!]!
+  reservation(id: UUID!): Reservation
+}
+
+# Mutations
+type Mutation {
+  # Auth
+  login(email: String!, password: String!, branchId: UUID!): AuthPayload!
+  
+  # Tenant
+  createTenant(input: CreateTenantInput!): Tenant!
+  updateTenant(id: UUID!, name: String, settings: JSON): Tenant!
+  
+  # Branch
+  createBranch(input: CreateBranchInput!): Branch!
+  updateBranch(id: UUID!, name: String, address: String, phone: String): Branch!
+  
+  # User
+  createUser(input: CreateUserInput!): User!
+  updateUser(id: UUID!, name: String, role: UserRole, isActive: Boolean): User!
+  deleteUser(id: UUID!): Boolean!
+  
+  # Category
+  createCategory(input: CreateCategoryInput!): Category!
+  updateCategory(id: UUID!, name: String, description: String, sortOrder: Int, isActive: Boolean): Category!
+  deleteCategory(id: UUID!): Boolean!
+  reorderCategories(branchId: UUID!, categoryIds: [UUID!]!): [Category!]!
+  
+  # Product
+  createProduct(input: CreateProductInput!): Product!
+  updateProduct(id: UUID!, input: CreateProductInput!): Product!
+  deleteProduct(id: UUID!): Boolean!
+  toggleProductAvailability(id: UUID!): Product!
+  
+  # Table
+  createTable(input: CreateTableInput!): Table!
+  updateTable(id: UUID!, number: String, capacity: Int): Table!
+  deleteTable(id: UUID!): Boolean!
+  updateTableStatus(id: UUID!, status: TableStatus!): Table!
+  
+  # Order
+  createOrder(input: CreateOrderInput!): Order!
+  updateOrderStatus(id: UUID!, status: OrderStatus!): Order!
+  cancelOrder(id: UUID!): Order!
+  addOrderItem(orderId: UUID!, input: CreateOrderItemInput!): OrderItem!
+  removeOrderItem(id: UUID!): Boolean!
+  
+  # Reservation
+  createReservation(input: CreateReservationInput!): Reservation!
+  updateReservation(id: UUID!, input: CreateReservationInput!): Reservation!
+  cancelReservation(id: UUID!): Reservation!
+}
