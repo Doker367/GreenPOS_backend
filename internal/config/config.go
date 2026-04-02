@@ -12,9 +12,9 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		Port:        getEnv("PORT", "8080"),
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/greenpos?sslmode=disable"),
-		JWTSecret:   getEnv("JWT_SECRET", "change-me-in-production"),
-		Environment: getEnv("ENV", "development"),
+		DatabaseURL: getEnv("DATABASE_URL", ""),
+		JWTSecret:   getEnv("JWT_SECRET", ""),
+		Environment: getEnv("ENV", "production"),
 	}
 }
 

@@ -27,7 +27,7 @@ func main() {
 
 	// Initialize layers
 	repos := repository.NewRepositories(db)
-	services := service.NewServices(repos)
+	services := service.NewServices(repos, cfg.JWTSecret)
 	resolvers := graph.NewResolvers(services, cfg.JWTSecret)
 
 	// GraphQL server

@@ -10,10 +10,6 @@ import (
 	"github.com/greenpos/backend/internal/model"
 )
 
-// executionContext extension methods for custom scalars
-// These are needed because gqlgen v0.17.45 generates calls to these methods
-// but doesn't always generate the implementations correctly.
-
 func (ec *executionContext) unmarshalInputUUID(ctx context.Context, v interface{}) (uuid.UUID, error) {
 	switch val := v.(type) {
 	case string:

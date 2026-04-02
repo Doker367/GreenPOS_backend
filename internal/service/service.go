@@ -46,9 +46,9 @@ type Services struct {
 }
 
 // NewServices creates a new Services instance
-func NewServices(repos *repository.Repositories) *Services {
+func NewServices(repos *repository.Repositories, jwtSecret string) *Services {
 	return &Services{
-		Auth:        NewAuthService(repos.Users, repos.Branches),
+		Auth:        NewAuthService(repos.Users, repos.Branches, jwtSecret),
 		Tenant:      NewTenantService(repos.Tenants),
 		Branch:      NewBranchService(repos.Branches),
 		User:        NewUserService(repos.Users),
@@ -68,11 +68,11 @@ type AuthService struct {
 	JwtSecret []byte
 }
 
-func NewAuthService(users *repository.UserRepository, branches *repository.BranchRepository) *AuthService {
+func NewAuthService(users *repository.UserRepository, branches *repository.BranchRepository, jwtSecret string) *AuthService {
 	return &AuthService{
 		Users:    users,
 		Branches: branches,
-		JwtSecret: []byte("your-secret-key-change-in-production"), // Should be from config
+		JwtSecret: []byte(jwtSecret),
 	}
 }
 
