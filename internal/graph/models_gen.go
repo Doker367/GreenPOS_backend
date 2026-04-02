@@ -95,9 +95,53 @@ type Mutation struct {
 type Query struct {
 }
 
+// Analytics Types
+type DashboardMetrics struct {
+	TotalOrders     int             `json:"totalOrders"`
+	TotalRevenue    float64         `json:"totalRevenue"`
+	AverageTicket   float64         `json:"averageTicket"`
+	OrdersToday     int             `json:"ordersToday"`
+	RevenueToday    float64         `json:"revenueToday"`
+	OrdersThisWeek  int             `json:"ordersThisWeek"`
+	RevenueThisWeek float64         `json:"revenueThisWeek"`
+	TopProducts     []TopProduct    `json:"topProducts"`
+}
+
+type TopProduct struct {
+	ProductID    string  `json:"productId"`
+	ProductName  string  `json:"productName"`
+	QuantitySold int     `json:"quantitySold"`
+	Revenue      float64 `json:"revenue"`
+}
+
+type DailySales struct {
+	Date    string  `json:"date"`
+	Orders  int     `json:"orders"`
+	Revenue float64 `json:"revenue"`
+}
+
+type StatusCount struct {
+	Status string `json:"status"`
+	Count  int    `json:"count"`
+}
+
+type RevenueReport struct {
+	Period          string                 `json:"period"`
+	TotalRevenue    float64                `json:"totalRevenue"`
+	TotalOrders     int                    `json:"totalOrders"`
+	AverageTicket   float64                `json:"averageTicket"`
+	ByPaymentMethod []PaymentMethodRevenue `json:"byPaymentMethod"`
+}
+
+type PaymentMethodRevenue struct {
+	Method  string  `json:"method"`
+	Revenue float64 `json:"revenue"`
+	Count   int     `json:"count"`
+}
+
 type Table struct {
 	ID           uuid.UUID         `json:"id"`
-	Branch       *model.Branch     `json:"branch"`
+	Branch       *model.Branch    `json:"branch"`
 	Number       string            `json:"number"`
 	Capacity     int               `json:"capacity"`
 	Status       model.TableStatus `json:"status"`

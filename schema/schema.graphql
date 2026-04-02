@@ -276,6 +276,57 @@ type Query {
   # Reservation queries
   reservations(branchId: UUID!, date: Date): [Reservation!]!
   reservation(id: UUID!): Reservation
+
+  # Analytics queries
+  dashboardMetrics(branchId: UUID!, period: String!): DashboardMetrics!
+  topProducts(branchId: UUID!, limit: Int, period: String): [TopProduct!]!
+  salesByDay(branchId: UUID!, days: Int!): [DailySales!]!
+  ordersByStatus(branchId: UUID!): [StatusCount!]!
+  revenueByPeriod(branchId: UUID!, period: String!): RevenueReport!
+}
+
+# Analytics Types
+type DashboardMetrics {
+  totalOrders: Int!
+  totalRevenue: Float!
+  averageTicket: Float!
+  ordersToday: Int!
+  revenueToday: Float!
+  ordersThisWeek: Int!
+  revenueThisWeek: Float!
+  topProducts: [TopProduct!]!
+}
+
+type TopProduct {
+  productId: String!
+  productName: String!
+  quantitySold: Int!
+  revenue: Float!
+}
+
+type DailySales {
+  date: String!
+  orders: Int!
+  revenue: Float!
+}
+
+type StatusCount {
+  status: String!
+  count: Int!
+}
+
+type RevenueReport {
+  period: String!
+  totalRevenue: Float!
+  totalOrders: Int!
+  averageTicket: Float!
+  byPaymentMethod: [PaymentMethodRevenue!]!
+}
+
+type PaymentMethodRevenue {
+  method: String!
+  revenue: Float!
+  count: Int!
 }
 
 # Mutations

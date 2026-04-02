@@ -328,6 +328,31 @@ func (r *queryResolver) Reservation(ctx context.Context, id uuid.UUID) (*model.R
 	panic(fmt.Errorf("not implemented: Reservation - reservation"))
 }
 
+// DashboardMetrics is the resolver for the dashboardMetrics field.
+func (r *queryResolver) DashboardMetrics(ctx context.Context, branchID uuid.UUID, period string) (*DashboardMetrics, error) {
+	panic(fmt.Errorf("not implemented: DashboardMetrics - dashboardMetrics"))
+}
+
+// TopProducts is the resolver for the topProducts field.
+func (r *queryResolver) TopProducts(ctx context.Context, branchID uuid.UUID, limit *int, period *string) ([]TopProduct, error) {
+	panic(fmt.Errorf("not implemented: TopProducts - topProducts"))
+}
+
+// SalesByDay is the resolver for the salesByDay field.
+func (r *queryResolver) SalesByDay(ctx context.Context, branchID uuid.UUID, days int) ([]DailySales, error) {
+	panic(fmt.Errorf("not implemented: SalesByDay - salesByDay"))
+}
+
+// OrdersByStatus is the resolver for the ordersByStatus field.
+func (r *queryResolver) OrdersByStatus(ctx context.Context, branchID uuid.UUID) ([]StatusCount, error) {
+	panic(fmt.Errorf("not implemented: OrdersByStatus - ordersByStatus"))
+}
+
+// RevenueByPeriod is the resolver for the revenueByPeriod field.
+func (r *queryResolver) RevenueByPeriod(ctx context.Context, branchID uuid.UUID, period string) (*RevenueReport, error) {
+	panic(fmt.Errorf("not implemented: RevenueByPeriod - revenueByPeriod"))
+}
+
 // Branch is the resolver for the branch field.
 func (r *reservationResolver) Branch(ctx context.Context, obj *model.Reservation) (*model.Branch, error) {
 	panic(fmt.Errorf("not implemented: Branch - branch"))
