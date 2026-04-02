@@ -13,6 +13,10 @@ import (
 	"github.com/greenpos/backend/internal/model"
 )
 
+func intPtr(i int) *int {
+	return &i
+}
+
 // Tenant is the resolver for the tenant field.
 func (r *branchResolver) Tenant(ctx context.Context, obj *model.Branch) (*model.Tenant, error) {
 	panic(fmt.Errorf("not implemented: Tenant - tenant"))
@@ -330,27 +334,226 @@ func (r *queryResolver) Reservation(ctx context.Context, id uuid.UUID) (*model.R
 
 // DashboardMetrics is the resolver for the dashboardMetrics field.
 func (r *queryResolver) DashboardMetrics(ctx context.Context, branchID uuid.UUID, period string) (*DashboardMetrics, error) {
-	panic(fmt.Errorf("not implemented: DashboardMetrics - dashboardMetrics"))
+	// Get all orders for the branch
+	orders, err := r.Services.Order.Orders.GetByBranch(ctx, branchID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	weekAgo := today.AddDate(0, 0, -7)
+
+	var totalOrders, ordersToday, ordersThisWeek int
+	var totalRevenue, revenueToday, revenueThisWeek float64
+	statusCounts := make(map[string]int)
+
+	for _, order := range orders {
+		if order.Status == model.OrderPaid || order.Status == model.OrderDelivered {
+			totalOrders++
+			totalRevenue += order.Total
+
+			if order.CreatedAt.After(today) {
+				ordersToday++
+				revenueToday += order.Total
+			}
+			if order.CreatedAt.After(weekAgo) {
+				ordersThisWeek++
+				revenueThisWeek += order.Total
+			}
+		}
+		statusCounts[string(order.Status)]++
+	}
+
+	avgTicket := float64(0)
+	if totalOrders > 0 {
+		avgTicket = totalRevenue / float64(totalOrders)
+	}
+
+	// Get top products
+	topProds, _ := r.TopProducts(ctx, branchID, intPtr(5), nil)
+
+	return &DashboardMetrics{
+		TotalOrders:    totalOrders,
+		TotalRevenue:   totalRevenue,
+		AverageTicket:  avgTicket,
+		OrdersToday:    ordersToday,
+		RevenueToday:   revenueToday,
+		OrdersThisWeek: ordersThisWeek,
+		RevenueThisWeek: revenueThisWeek,
+		TopProducts:    topProds,
+	}, nil
 }
 
 // TopProducts is the resolver for the topProducts field.
 func (r *queryResolver) TopProducts(ctx context.Context, branchID uuid.UUID, limit *int, period *string) ([]TopProduct, error) {
-	panic(fmt.Errorf("not implemented: TopProducts - topProducts"))
+	limitVal := 10
+	if limit != nil {
+		limitVal = *limit
+	}
+
+	orders, err := r.Services.Order.Orders.GetByBranch(ctx, branchID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Aggregate sales by product
+	productSales := make(map[string]struct {
+		name    string
+		qty     int
+		revenue float64
+	})
+
+	for _, order := range orders {
+		if order.Status != model.OrderPaid && order.Status != model.OrderDelivered {
+			continue
+		}
+		items, err := r.Services.Order.Orders.GetItems(ctx, order.ID)
+		if err != nil {
+			continue
+		}
+		for _, item := range items {
+			prod, _ := r.Services.Product.Products.GetByID(ctx, item.ProductID)
+			name := "Unknown"
+			if prod != nil {
+				name = prod.Name
+			}
+			key := item.ProductID.String()
+			if existing, ok := productSales[key]; ok {
+				productSales[key] = struct {
+					name    string
+					qty     int
+					revenue float64
+				}{name: name, qty: existing.qty + int(item.Quantity), revenue: existing.revenue + item.TotalPrice}
+			} else {
+				productSales[key] = struct {
+					name    string
+					qty     int
+					revenue float64
+				}{name: name, qty: int(item.Quantity), revenue: item.TotalPrice}
+			}
+		}
+	}
+
+	// Sort and limit
+	type productSale struct {
+		id       string
+		name     string
+		qty      int
+		revenue  float64
+	}
+	var sorted []productSale
+	for id, ps := range productSales {
+		sorted = append(sorted, productSale{id: id, name: ps.name, qty: ps.qty, revenue: ps.revenue})
+	}
+	// Simple sort by revenue
+	for i := 0; i < len(sorted)-1; i++ {
+		for j := i + 1; j < len(sorted); j++ {
+			if sorted[j].revenue > sorted[i].revenue {
+				sorted[i], sorted[j] = sorted[j], sorted[i]
+			}
+		}
+	}
+	if limitVal > len(sorted) {
+		limitVal = len(sorted)
+	}
+
+	var result []TopProduct
+	for i := 0; i < limitVal; i++ {
+		result = append(result, TopProduct{
+			ProductID:     sorted[i].id,
+			ProductName:   sorted[i].name,
+			QuantitySold:  sorted[i].qty,
+			Revenue:       sorted[i].revenue,
+		})
+	}
+	return result, nil
 }
 
 // SalesByDay is the resolver for the salesByDay field.
 func (r *queryResolver) SalesByDay(ctx context.Context, branchID uuid.UUID, days int) ([]DailySales, error) {
-	panic(fmt.Errorf("not implemented: SalesByDay - salesByDay"))
+	orders, err := r.Services.Order.Orders.GetByBranch(ctx, branchID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	result := make([]DailySales, days)
+
+	for i := days - 1; i >= 0; i-- {
+		date := now.AddDate(0, 0, -i)
+		dayStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+		dayEnd := dayStart.AddDate(0, 0, 1)
+
+		var dayOrders int
+		var dayRevenue float64
+		for _, order := range orders {
+			if (order.Status == model.OrderPaid || order.Status == model.OrderDelivered) &&
+				order.CreatedAt.After(dayStart) && order.CreatedAt.Before(dayEnd) {
+				dayOrders++
+				dayRevenue += order.Total
+			}
+		}
+		result[days-1-i] = DailySales{
+			Date:    dayStart.Format("2006-01-02"),
+			Orders:  dayOrders,
+			Revenue: dayRevenue,
+		}
+	}
+	return result, nil
 }
 
 // OrdersByStatus is the resolver for the ordersByStatus field.
 func (r *queryResolver) OrdersByStatus(ctx context.Context, branchID uuid.UUID) ([]StatusCount, error) {
-	panic(fmt.Errorf("not implemented: OrdersByStatus - ordersByStatus"))
+	orders, err := r.Services.Order.Orders.GetByBranch(ctx, branchID)
+	if err != nil {
+		return nil, err
+	}
+
+	counts := make(map[string]int)
+	for _, order := range orders {
+		counts[string(order.Status)]++
+	}
+
+	var result []StatusCount
+	for status, count := range counts {
+		result = append(result, StatusCount{
+			Status: status,
+			Count:  count,
+		})
+	}
+	return result, nil
 }
 
 // RevenueByPeriod is the resolver for the revenueByPeriod field.
 func (r *queryResolver) RevenueByPeriod(ctx context.Context, branchID uuid.UUID, period string) (*RevenueReport, error) {
-	panic(fmt.Errorf("not implemented: RevenueByPeriod - revenueByPeriod"))
+	orders, err := r.Services.Order.Orders.GetByBranch(ctx, branchID)
+	if err != nil {
+		return nil, err
+	}
+
+	var totalOrders int
+	var totalRevenue float64
+
+	for _, order := range orders {
+		if order.Status == model.OrderPaid || order.Status == model.OrderDelivered {
+			totalOrders++
+			totalRevenue += order.Total
+		}
+	}
+
+	avgTicket := float64(0)
+	if totalOrders > 0 {
+		avgTicket = totalRevenue / float64(totalOrders)
+	}
+
+	return &RevenueReport{
+		Period:        period,
+		TotalRevenue:  totalRevenue,
+		TotalOrders:   totalOrders,
+		AverageTicket: avgTicket,
+		ByPaymentMethod: []PaymentMethodRevenue{}, // Payment method tracking not implemented
+	}, nil
 }
 
 // Branch is the resolver for the branch field.
